@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  StoredProcedure [dbo].[SP_CargarDatos]    Script Date: 11/23/2019 3:13:53 AM ******/
+/****** Object:  StoredProcedure [dbo].[SP_CargarDatos]    Script Date: 11/24/2019 7:31:42 AM ******/
 SET ANSI_NULLS ON
 GO
 

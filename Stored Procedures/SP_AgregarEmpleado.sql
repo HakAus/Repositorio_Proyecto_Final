@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  StoredProcedure [dbo].[SP_AgregarEmpleado]    Script Date: 11/23/2019 3:13:12 AM ******/
+/****** Object:  StoredProcedure [dbo].[SP_AgregarEmpleado]    Script Date: 11/24/2019 7:32:19 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -23,8 +23,7 @@ BEGIN
 	SET NOCOUNT ON;
 
 	BEGIN TRY
-		DECLARE @NuevosEmpleados Empleados 
-		DECLARE @InicioTran int
+		DECLARE @NuevosEmpleados Empleados, @InicioTran int, @UltimaFecha int
 
 		IF (@@TRANCOUNT = 0)	-- Para correr solo una transaccion a la vez
 		BEGIN
@@ -49,12 +48,15 @@ BEGIN
 		INNER JOIN TipoJornada TJ ON TJ.Nombre = N.JornadaInicial
 
 		-- Se asigna la jornada al empleado
+		SELECT @UltimaFecha = max(S.Id)
+		FROM Semana S
+
 		INSERT INTO Jornada
-		SELECT DISTINCT E.Id, TJ.Id, S.Id
+		SELECT E.Id, TJ.Id, S.Id
 		FROM @NuevosEmpleados N
 		INNER JOIN Empleado E ON E.DocumentoIdentificacion = N.DocumentoIdentificacion
 		INNER JOIN TipoJornada TJ ON TJ.Nombre = N.JornadaInicial
-		INNER JOIN Semana S ON S.FechaInicio = @fechaIteracion
+		INNER JOIN Semana S ON S.Id = @UltimaFecha
 
 		IF (@InicioTran = 1)
 		BEGIN 

@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  Table [dbo].[PlanillaSemanal]    Script Date: 11/23/2019 3:22:25 AM ******/
+/****** Object:  Table [dbo].[PlanillaSemanal]    Script Date: 11/24/2019 7:29:35 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -10,9 +10,10 @@ GO
 
 CREATE TABLE [dbo].[PlanillaSemanal](
 	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[IdEmpleado] [int] NOT NULL,
 	[IdSemana] [int] NOT NULL,
-	[IdMovPlanilla] [int] NOT NULL,
-	[SalarioMensual] [money] NOT NULL,
+	[IdPlanillaMensual] [int] NOT NULL,
+	[SalarioDevengado] [money] NOT NULL,
  CONSTRAINT [PK_PlanillaSemanal] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC
@@ -20,11 +21,18 @@ CREATE TABLE [dbo].[PlanillaSemanal](
 ) ON [PRIMARY]
 GO
 
-ALTER TABLE [dbo].[PlanillaSemanal]  WITH CHECK ADD  CONSTRAINT [FK_PlanillaSemanal_MovPlanilla] FOREIGN KEY([IdMovPlanilla])
-REFERENCES [dbo].[MovPlanilla] ([Id])
+ALTER TABLE [dbo].[PlanillaSemanal]  WITH CHECK ADD  CONSTRAINT [FK_PlanillaSemanal_Empleado] FOREIGN KEY([IdEmpleado])
+REFERENCES [dbo].[Empleado] ([Id])
 GO
 
-ALTER TABLE [dbo].[PlanillaSemanal] CHECK CONSTRAINT [FK_PlanillaSemanal_MovPlanilla]
+ALTER TABLE [dbo].[PlanillaSemanal] CHECK CONSTRAINT [FK_PlanillaSemanal_Empleado]
+GO
+
+ALTER TABLE [dbo].[PlanillaSemanal]  WITH CHECK ADD  CONSTRAINT [FK_PlanillaSemanal_PlanillaMensual] FOREIGN KEY([IdPlanillaMensual])
+REFERENCES [dbo].[PlanillaMensual] ([Id])
+GO
+
+ALTER TABLE [dbo].[PlanillaSemanal] CHECK CONSTRAINT [FK_PlanillaSemanal_PlanillaMensual]
 GO
 
 ALTER TABLE [dbo].[PlanillaSemanal]  WITH CHECK ADD  CONSTRAINT [FK_PlanillaSemanal_Semana] FOREIGN KEY([IdSemana])

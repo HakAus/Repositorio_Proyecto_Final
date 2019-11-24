@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  Table [dbo].[Porcentual]    Script Date: 11/23/2019 3:22:34 AM ******/
+/****** Object:  Table [dbo].[Porcentual]    Script Date: 11/24/2019 7:28:42 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -9,7 +9,8 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE TABLE [dbo].[Porcentual](
-	[Id] [int] NOT NULL,
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[IdTipoDeduccion] [int] NOT NULL,
  CONSTRAINT [PK_Porcentual] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC
@@ -17,7 +18,7 @@ CREATE TABLE [dbo].[Porcentual](
 ) ON [PRIMARY]
 GO
 
-ALTER TABLE [dbo].[Porcentual]  WITH CHECK ADD  CONSTRAINT [FK_Porcentual_TipoDeduccion] FOREIGN KEY([Id])
+ALTER TABLE [dbo].[Porcentual]  WITH CHECK ADD  CONSTRAINT [FK_Porcentual_TipoDeduccion] FOREIGN KEY([IdTipoDeduccion])
 REFERENCES [dbo].[TipoDeduccion] ([Id])
 GO
 

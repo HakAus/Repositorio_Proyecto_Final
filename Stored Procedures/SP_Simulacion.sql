@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  StoredProcedure [dbo].[Simulacion]    Script Date: 11/23/2019 3:14:36 AM ******/
+/****** Object:  StoredProcedure [dbo].[Simulacion]    Script Date: 11/24/2019 7:30:46 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -12,7 +12,7 @@ GO
 -- ==========================================================================================
 -- Autores:		<Austin Hakanson y Antony Artavia>
 -- Fecha de creacion: <18/11/2019>
--- Fecha de ultima modificacion <21-11-2019>
+-- Fecha de ultima modificacion <23-11-2019>
 -- Descripcion:	<SP para hacer la simulacion de actividades de planillas de obreros>
 -- ==========================================================================================
 
@@ -79,6 +79,7 @@ BEGIN
 	END CATCH
 
 	DECLARE @fechaPrueba date = '2017-01-14'
+	DECLARE @IdSemanaDePago int
 	WHILE @fechaIteracion <= @fechaPrueba
 	BEGIN
 		-- Se cargan en @temp los datos XML de la fecha @fechaIteracion
@@ -90,39 +91,39 @@ BEGIN
 		-- ///	INGRESO DE NUEVOS EMPLEADOS	///
 		EXEC SP_AgregarEmpleado @temp, @fechaIteracion
 
-		-- ///	INGRESO DE DEDUCCIONES DE EMPLEADOS	///
-		EXEC SP_AgregarDeduccion @temp
-
 		-- ///	INGRESO DE ASISTENCIA ///
 		EXEC SP_AgregarAsistencias @temp
 
 		-- ///	CAMBIO DE TIPO DE JORNADA POR EMPLEADO	///
+		EXEC SP_AgregarJornada @temp
 
-		-- Se agregan los datos del xml a la variable tabla
-		INSERT INTO @CambiosTipoJornada
-		SELECT Tab.Col.value('(@docId)[1]','nvarchar(100)'),
-			   Tab.Col.value('(@jornada)[1]','nvarchar(100)')
-		FROM @temp.nodes('FechaOperacion/TipoJornada') Tab(Col)
+		-- ///	INGRESO DE DEDUCCIONES DE EMPLEADOS	///
+		EXEC SP_AgregarDeduccion @temp, @fechaIteracion
 
-		SELECT 'Antes',* FROM Jornada 
+		-- ///	PROCESAMIENTO DE PAGO A LOS EMPLEADOS ///
 
-
-		INSERT INTO Jornada
-		SELECT E.Id, TJ.Id, S.Id
-		FROM Semana S, @CambiosTipoJornada C
-		INNER JOIN Empleado E ON E.DocumentoIdentificacion = C.DocumentoIdentificacion
-		INNER JOIN TipoJornada TJ ON TJ.Nombre = C.Jornada
-		WHERE S.FechaInicio <= @fechaIteracion and @fechaIteracion <= S.FechaFin
+		-- Se obtiene el id de la semana anterior
+		SET @IdSemanaDePago = (SELECT S.Id FROM Semana S WHERE S.FechaFin = @fechaIteracion)
 		
-		SELECT 'Despues',* FROM Jornada 
-		--SELECT 'Antes',* FROM Jornada
-		--UPDATE Jornada 
-		--SET IdTipoJornada = (SELECT TJ.Id FROM TipoJornada TJ WHERE TJ.Nombre = )
-		--WHERE @fechaIteracion BETWEEN 
-		--SELECT 'Despues',* FROM Jornada
-		
-		-- Se actualiza el tipo de jornada segun el docId del empleado
+		IF @IdSemanaDePago IS NOT NULL 
+		BEGIN
+			-- Se hace el movimiento de deducciones fijas de la planilla 
+			--INSERT INTO MovPlanilla (IdTipoMovPlanilla, IdPlanillaSemanal, Fecha, Monto, Descripcion)
+			SELECT E.Nombre, DXE.Monto, DXE.Detalle
+			FROM DeduccionXEmpleado DXE
+			INNER JOIN Empleado E ON E.Id = DXE.IdEmpleado
+			INNER JOIN PlanillaSemanal PS ON PS.IdEmpleado = E.Id
+			WHERE PS.IdSemana = @IdSemanaDePago and DXE.IdTipoDeduccion IN (SELECT F.IdTipoDeduccion FROM Fija F)
+		END
+	
 
+		--SELECT E.Nombre, @IdSemanaDePago, PM.Id, 
+		--FROM Jornada J
+		--INNER JOIN Empleado E ON J.IdEmpleado = E.Id
+		--INNER JOIN PlanillaMensual PM ON PM.IdEmpleado = E.Id
+		--INNER JOIN MovPlanilla 
+		--WHERE J.IdSemana = @IdSemanaDePago
+	
 		SET @fechaIteracion = DATEADD(DAY, 1, @fechaIteracion)
 	END
 END

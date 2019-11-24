@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  Table [dbo].[MovPlanilla]    Script Date: 11/23/2019 3:22:03 AM ******/
+/****** Object:  Table [dbo].[MovPlanilla]    Script Date: 11/24/2019 7:28:58 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -10,7 +10,8 @@ GO
 
 CREATE TABLE [dbo].[MovPlanilla](
 	[Id] [int] IDENTITY(1,1) NOT NULL,
-	[IdTipoPlanilla] [int] NOT NULL,
+	[IdTipoMovPlanilla] [int] NOT NULL,
+	[IdPlanillaSemanal] [int] NOT NULL,
 	[Fecha] [date] NOT NULL,
 	[Monto] [money] NOT NULL,
 	[Descripcion] [nvarchar](200) NOT NULL,
@@ -21,7 +22,7 @@ CREATE TABLE [dbo].[MovPlanilla](
 ) ON [PRIMARY]
 GO
 
-ALTER TABLE [dbo].[MovPlanilla]  WITH CHECK ADD  CONSTRAINT [FK_MovPlanilla_TipoMovPlanilla] FOREIGN KEY([IdTipoPlanilla])
+ALTER TABLE [dbo].[MovPlanilla]  WITH CHECK ADD  CONSTRAINT [FK_MovPlanilla_TipoMovPlanilla] FOREIGN KEY([IdTipoMovPlanilla])
 REFERENCES [dbo].[TipoMovPlanilla] ([Id])
 GO
 

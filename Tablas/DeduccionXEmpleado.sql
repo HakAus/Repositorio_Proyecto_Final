@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  Table [dbo].[DeduccionXEmpleado]    Script Date: 11/23/2019 3:21:07 AM ******/
+/****** Object:  Table [dbo].[DeduccionXEmpleado]    Script Date: 11/24/2019 7:28:07 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -13,7 +13,7 @@ CREATE TABLE [dbo].[DeduccionXEmpleado](
 	[IdTipoDeduccion] [int] NOT NULL,
 	[IdEmpleado] [int] NOT NULL,
 	[Detalle] [nvarchar](200) NOT NULL,
-	[Valor] [numeric](18, 0) NOT NULL,
+	[Monto] [money] NOT NULL,
  CONSTRAINT [PK_DeduccionXEmpleado] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC

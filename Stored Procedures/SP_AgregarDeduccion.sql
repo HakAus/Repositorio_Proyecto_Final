@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  StoredProcedure [dbo].[SP_AgregarDeduccion]    Script Date: 11/23/2019 3:12:56 AM ******/
+/****** Object:  StoredProcedure [dbo].[SP_AgregarDeduccion]    Script Date: 11/24/2019 7:32:03 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -16,7 +16,7 @@ GO
 -- ===================================================================
 CREATE OR ALTER PROCEDURE [dbo].[SP_AgregarDeduccion]
 	-- Parametros
-	@xml xml
+	@xml xml, @Fecha date
 AS
 BEGIN
 
@@ -39,12 +39,12 @@ BEGIN
 			   Tab.Col.value('(@monto)[1]','money')
 		FROM @xml.nodes('FechaOperacion/DeduccionxEmp') Tab(Col)
 
-		-- Agregar deduccion
+		-- Se insertan las deducciones primero en la clase padre DeduccionXEmpleado
 		INSERT INTO DeduccionXEmpleado
 		SELECT TD.Id, E.Id, N.TipoDeduccion, N.Monto
 		FROM @NuevasDeducciones N
-		INNER JOIN Empleado E ON E.DocumentoIdentificacion = N.DocumentoIdentificacion
 		INNER JOIN TipoDeduccion TD ON TD.Nombre = N.TipoDeduccion
+		INNER JOIN Empleado E ON E.DocumentoIdentificacion = N.DocumentoIdentificacion
 			
 		IF (@InicioTran = 1)
 		BEGIN
