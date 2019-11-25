@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  StoredProcedure [dbo].[ReiniciarTablas]    Script Date: 11/24/2019 7:30:31 AM ******/
+/****** Object:  StoredProcedure [dbo].[ReiniciarTablas]    Script Date: 11/25/2019 12:25:59 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -21,6 +21,11 @@ BEGIN
 	SET NOCOUNT ON;
 
     -- /// SCRIPT PARA REINICIAR LAS TABLAS ///
+	DELETE FROM [dbo].[PlanillaSemanal]
+	DBCC CHECKIDENT ('PlanillaSemanal', RESEED, 0)
+
+	DELETE FROM [dbo].[PlanillaMensual]
+	DBCC CHECKIDENT ('PlanillaMensual', RESEED, 0)
 
 	DELETE FROM [Proyecto].[dbo].[MovPlanilla]
 	DBCC CHECKIDENT ('MovPlanilla', RESEED, 0)

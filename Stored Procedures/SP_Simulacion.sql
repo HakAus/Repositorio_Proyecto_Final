@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  StoredProcedure [dbo].[Simulacion]    Script Date: 11/24/2019 7:30:46 AM ******/
+/****** Object:  StoredProcedure [dbo].[Simulacion]    Script Date: 11/25/2019 12:25:48 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -12,7 +12,7 @@ GO
 -- ==========================================================================================
 -- Autores:		<Austin Hakanson y Antony Artavia>
 -- Fecha de creacion: <18/11/2019>
--- Fecha de ultima modificacion <23-11-2019>
+-- Fecha de ultima modificacion <24-11-2019>
 -- Descripcion:	<SP para hacer la simulacion de actividades de planillas de obreros>
 -- ==========================================================================================
 
@@ -49,6 +49,18 @@ BEGIN
 	DocId nvarchar(50),
 	Jornada nvarchar(50)
 	)
+	DECLARE @PagosSemana TABLE
+	(
+	Sec int identity(1,1),
+	Empleado int,
+	IdPuesto int,
+	IdJornada int,
+	IdTipoJornada int,
+	HoraEntrada time(0),
+	HoraSalida time(0),
+	SalarioPorHora money,
+	SalarioDelDia money
+	)
 
 	DECLARE @DocHandle int, @DocumentoXML xml, @temp xml
 	DECLARE @CambiosTipoJornada TipoJornada
@@ -80,10 +92,15 @@ BEGIN
 
 	DECLARE @fechaPrueba date = '2017-01-14'
 	DECLARE @IdSemanaDePago int
+	
+
 	WHILE @fechaIteracion <= @fechaPrueba
 	BEGIN
 		-- Se cargan en @temp los datos XML de la fecha @fechaIteracion
 		SET @temp = (select @DocumentoXML.query('/Simulacion/FechaOperacion[@fecha= sql:variable("@fechaIteracion")]'))
+
+		-- ///	INGRESO DE NUEVO MES	///
+		EXEC SP_AgregarMes @FechaIteracion
 
 		-- ///	INGRESO DE NUEVA SEMANA	///
 		EXEC SP_AgregarSemana @FechaIteracion
@@ -100,32 +117,101 @@ BEGIN
 		-- ///	INGRESO DE DEDUCCIONES DE EMPLEADOS	///
 		EXEC SP_AgregarDeduccion @temp, @fechaIteracion
 
-		-- ///	PROCESAMIENTO DE PAGO A LOS EMPLEADOS ///
+		-- ///	PROCESAMIENTO DE PAGO A LOS EMPLEADOS /// --> Cada dia se actualiza la planilla semanal 
 
-		-- Se obtiene el id de la semana anterior
-		SET @IdSemanaDePago = (SELECT S.Id FROM Semana S WHERE S.FechaFin = @fechaIteracion)
+		-- //	INGRESO DE LOS MOVIMIENTOS DE PLANILLA	//
+
+		-- Se obtiene el id de la semana de pago
+		SET @IdSemanaDePago = dbo.obtenerIdSemana(@fechaIteracion)
+
+		IF (@fechaIteracion NOT IN (SELECT F.Fecha FROM Feriado F) or DATENAME(WEEKDAY,@fechaIteracion) != 'Sunday')
+		BEGIN 
+			INSERT INTO @PagosSemana
+			SELECT E.Id, P.Id, J.Id, TJ.Id, A.HoraEntrada, A.HoraSalida, SPH.Salario,
+			-- Caso para horas extra regulares
+			CASE WHEN DATEDIFF(HOUR,TJ.HoraFin, A.HoraSalida) > 0
+			THEN SPH.Salario * DATEDIFF(HOUR,A.HoraEntrada, A.HoraSalida) + SPH.Salario * DATEDIFF(HOUR,TJ.HoraFin,A.HoraSalida) * 1.5 
+			-- Caso para horas ordinarias
+			ELSE SPH.Salario * DATEDIFF(HOUR,A.HoraEntrada, A.HoraSalida) END
+			FROM Asistencia A
+			INNER JOIN Jornada J ON J.Id = A.IdJornada
+			INNER JOIN Empleado E ON E.Id = J.IdEmpleado
+			INNER JOIN Puesto P ON P.Id = E.IdPuesto
+			INNER JOIN TipoJornada TJ ON TJ.Id = J.IdTipoJornada
+			INNER JOIN SalarioPorHora SPH ON SPH.IdPuesto = P.Id and SPH.IdTipoJornada = TJ.Id
+			GROUP BY E.Id, P.Id, J.Id, TJ.Id, A.HoraEntrada, A.HoraSalida, SPH.Salario, TJ.HoraFin
+
+			UPDATE PlanillaSemanal
+			SET SalarioDevengado = SalarioDevengado + P.SalarioDelDia
+			FROM @PagosSemana P
+			WHERE IdEmpleado = P.Empleado and IdSemana = @IdSemanaDePago 
+			END
+			
+			INSERT INTO MovPlanilla
+			SELECT TMP.Nombre, PS.Id, @fechaIteracion, PS.SalarioDevengado, 'Pago de horas de trabajo'
+			FROM PlanillaSemanal PS, TipoMovPlanilla TMP
+			WHERE TMP.Nombre = 'Hora ordinaria' and PS.IdSemana = @IdSemanaDePago 
+
+		-- Se registra el pago de las horas
+
 		
-		IF @IdSemanaDePago IS NOT NULL 
-		BEGIN
-			-- Se hace el movimiento de deducciones fijas de la planilla 
-			--INSERT INTO MovPlanilla (IdTipoMovPlanilla, IdPlanillaSemanal, Fecha, Monto, Descripcion)
-			SELECT E.Nombre, DXE.Monto, DXE.Detalle
-			FROM DeduccionXEmpleado DXE
-			INNER JOIN Empleado E ON E.Id = DXE.IdEmpleado
-			INNER JOIN PlanillaSemanal PS ON PS.IdEmpleado = E.Id
-			WHERE PS.IdSemana = @IdSemanaDePago and DXE.IdTipoDeduccion IN (SELECT F.IdTipoDeduccion FROM Fija F)
-		END
-	
 
-		--SELECT E.Nombre, @IdSemanaDePago, PM.Id, 
-		--FROM Jornada J
-		--INNER JOIN Empleado E ON J.IdEmpleado = E.Id
-		--INNER JOIN PlanillaMensual PM ON PM.IdEmpleado = E.Id
-		--INNER JOIN MovPlanilla 
-		--WHERE J.IdSemana = @IdSemanaDePago
+		
+
+		-- Este es le caso para las horas de trabajo ordinarias
+	--	IF (@fechaIteracion NOT IN (SELECT F.Fecha FROM Feriado F) or DATENAME(WEEKDAY,@fechaIteracion) != 'Sunday')
+	--	BEGIN
+	--		-- Seleccion de casos con horas ordinarias y horas extra
+	--		INSERT INTO @PagosSemana
+	--		SELECT E.Id as IdEmpleado, P.Id as IdPuesto, J.Id as IdJornada, TJ.Id as IdJornada, A.HoraEntrada, A.HoraSalida, SPH.Salario as SalarioPorHora,
+	--			   CASE WHEN DATEDIFF(HOUR,TJ.HoraFin, A.HoraSalida) > 0 THEN SPH.Salario * DATEDIFF(HOUR,A.HoraEntrada, A.HoraSalida) + SPH.Salario * DATEDIFF(HOUR,TJ.HoraFin,A.HoraSalida) * 1.5 
+	--					ELSE SPH.Salario * DATEDIFF(HOUR,A.HoraEntrada, A.HoraSalida) END AS SalarioDelDia
+	--		FROM Asistencia A
+	--		INNER JOIN Jornada J ON J.Id = A.IdJornada
+	--		INNER JOIN Empleado E ON E.Id = J.IdEmpleado
+	--		INNER JOIN Puesto P ON P.Id = E.IdPuesto
+	--		INNER JOIN TipoJornada TJ ON TJ.Id = J.IdTipoJornada
+	--		INNER JOIN SalarioPorHora SPH ON SPH.IdPuesto = P.Id and SPH.IdTipoJornada = TJ.Id
+	--		GROUP BY E.Id, P.Id, J.Id, TJ.Id, A.HoraEntrada, A.HoraSalida, SPH.Salario, TJ.HoraFin
+
+	--		SELECT E.Nombre, SUM(P.SalarioDeLaSemana) as SalarioTotal
+	--		FROM @PagosSemana P
+	--		INNER JOIN Empleado E ON E.Id = P.Empleado
+	--		GROUP BY E.Nombre
+
+	--		--IF (SELECT S.Id FROM Semana S WHERE S.FechaFin = @fechaIteracion) IS NOT NULL
+	--		--BEGIN
+				
+	--		--END
+	--	END
+	--	-- Este es el caso para el pago de feriados y horas extra por ser domingo
+	--	ELSE
+	--	BEGIN 
+	--		-- Seleccion de casos con horas ordinarias y horas extra
+	--		INSERT INTO @PagosSemana
+	--		SELECT E.Id as IdEmpleado, P.Id as IdPuesto, J.Id as IdJornada, TJ.Id as IdJornada, A.HoraEntrada, A.HoraSalida, SPH.Salario as SalarioPorHora, COUNT(A.Id) as Asistencias,
+	--			   CASE WHEN DATEDIFF(HOUR,TJ.HoraFin, A.HoraSalida) > 0 THEN SPH.Salario * DATEDIFF(HOUR,A.HoraEntrada, A.HoraSalida) + SPH.Salario * DATEDIFF(HOUR,TJ.HoraFin,A.HoraSalida) * 2
+	--					ELSE SPH.Salario * DATEDIFF(HOUR,A.HoraEntrada, A.HoraSalida) END AS SalarioDeLaSemana
+	--		FROM Asistencia A
+	--		INNER JOIN Jornada J ON J.Id = A.IdJornada
+	--		INNER JOIN Empleado E ON E.Id = J.IdEmpleado
+	--		INNER JOIN Puesto P ON P.Id = E.IdPuesto
+	--		INNER JOIN TipoJornada TJ ON TJ.Id = J.IdTipoJornada
+	--		INNER JOIN SalarioPorHora SPH ON SPH.IdPuesto = P.Id and SPH.IdTipoJornada = TJ.Id
+	--		GROUP BY E.Id, P.Id, J.Id, TJ.Id, A.HoraEntrada, A.HoraSalida, SPH.Salario, TJ.HoraFin
+
+	--		SELECT E.Nombre, SUM(P.SalarioDeLaSemana)
+	--		FROM @PagosSemana P
+	--		INNER JOIN Empleado E ON E.Id = P.IdEmpleado
+	--		GROUP BY E.Nombre
+	--	END
 	
 		SET @fechaIteracion = DATEADD(DAY, 1, @fechaIteracion)
 	END
+
+	SELECT * FROM PlanillaMensual
+
+	SELECT * FROM PlanillaSemanal
 END
 GO
 

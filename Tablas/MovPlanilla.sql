@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  Table [dbo].[MovPlanilla]    Script Date: 11/24/2019 7:28:58 AM ******/
+/****** Object:  Table [dbo].[MovPlanilla]    Script Date: 11/25/2019 12:25:15 AM ******/
 SET ANSI_NULLS ON
 GO
 
@@ -20,6 +20,13 @@ CREATE TABLE [dbo].[MovPlanilla](
 	[Id] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[MovPlanilla]  WITH CHECK ADD  CONSTRAINT [FK_MovPlanilla_PlanillaSemanal] FOREIGN KEY([IdPlanillaSemanal])
+REFERENCES [dbo].[PlanillaSemanal] ([Id])
+GO
+
+ALTER TABLE [dbo].[MovPlanilla] CHECK CONSTRAINT [FK_MovPlanilla_PlanillaSemanal]
 GO
 
 ALTER TABLE [dbo].[MovPlanilla]  WITH CHECK ADD  CONSTRAINT [FK_MovPlanilla_TipoMovPlanilla] FOREIGN KEY([IdTipoMovPlanilla])
