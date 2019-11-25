@@ -1,7 +1,7 @@
 USE [Proyecto]
 GO
 
-/****** Object:  UserDefinedFunction [dbo].[esUltimoDiaDelMes]    Script Date: 11/25/2019 12:31:19 AM ******/
+/****** Object:  UserDefinedFunction [dbo].[esUltimoDiaDelMes]    Script Date: 11/25/2019 4:27:49 PM ******/
 SET ANSI_NULLS ON
 GO
 
